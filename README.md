@@ -89,7 +89,10 @@
 ## 資源包
 
 插件使用獨立資源包提供武器外觀，玩家加入時會自動收到推送。  
-資源包來源：[Limbus-E.G.O-weapon-plugin-ResourcePack](https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack)
+資源包來源：[Limbus-E.G.O-weapon-plugin-ResourcePack](https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack)  
+目前版本：**v.10**
+
+各武器的 `customModelData` 及基底材質已記錄於上方武器一覽，可供外部插件直接引用。
 
 ---
 
