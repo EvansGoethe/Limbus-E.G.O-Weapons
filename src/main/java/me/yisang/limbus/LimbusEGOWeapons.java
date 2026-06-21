@@ -36,8 +36,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     private final Map<UUID, Long> solemnCooldowns = new HashMap<>();
     private solemnlament solemn;
 
-    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/Releases/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.10.zip";
-    private static final String PACK_HASH = "56d3add97e4d4c549654dbd1ed2fef73f91b324c";
+    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/2.1/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.1.zip";
+    private static final String PACK_HASH = "d7196f0330a7e8c946fb131d96ac8dc283673ff2";
     private static final java.util.UUID PACK_UUID = java.util.UUID.nameUUIDFromBytes(
             PACK_URL.getBytes(java.nio.charset.StandardCharsets.UTF_8));
 
@@ -139,8 +139,9 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         }
     }
 
-    // ── 莊嚴哀悼射擊（右鍵 → 裝填音 → 延遲後發射蝴蝶石英）──────────────────────
+    // ── 莊嚴哀悼射擊（三叉戟蓄力 → 右鍵開始蓄力播放裝填音；放開時攔截投擲、改發蝴蝶石英）──
 
+    // 右鍵開始蓄力：播放裝填音；若無彈藥則取消蓄力。
     @EventHandler(priority = EventPriority.LOWEST)
     public void onWeaponInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
@@ -149,33 +150,47 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         ItemStack item = event.getItem();
         if (item == null || !solemn.isSolemnLament(item)) return;
 
-        event.setCancelled(true);
-
-        long now = System.currentTimeMillis();
-        if (now - solemnCooldowns.getOrDefault(player.getUniqueId(), 0L) < 1200) return;
-
-        if (!solemn.hasButterflyQuartz(player) && player.getGameMode() != GameMode.CREATIVE) return;
+        // 沒有蝴蝶石英（且非創造）→ 不允許蓄力
+        if (!solemn.hasButterflyQuartz(player) && player.getGameMode() != GameMode.CREATIVE) {
+            event.setCancelled(true);
+            return;
+        }
 
         int quickLevel = item.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.QUICK_CHARGE);
         String loadSound = (quickLevel > 0)
                 ? "solemnlament:solemn.quick_load." + Math.min(quickLevel, 3)
                 : "solemnlament:solemn.load";
         player.getWorld().playSound(player.getLocation(), loadSound, 0.6f, 1.0f);
+        // 不取消事件：讓三叉戟正常進入蓄力（舉手）動畫
+    }
+
+    // 放開三叉戟：攔截投擲，物品留在手上，改發蝴蝶石英彈幕。
+    @EventHandler
+    public void onTridentLaunch(com.destroystokyo.paper.event.player.PlayerLaunchProjectileEvent event) {
+        if (!(event.getProjectile() instanceof org.bukkit.entity.Trident)) return;
+        ItemStack item = event.getItemStack();
+        if (item == null || !solemn.isSolemnLament(item)) return;
+
+        // 一律攔截：不射出三叉戟、不離手
+        event.setShouldConsume(false);
+        event.setCancelled(true);
+
+        Player player = event.getPlayer();
+        long now = System.currentTimeMillis();
+        int quickLevel = item.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.QUICK_CHARGE);
+        long cooldown = quickLevel > 0 ? Math.max(400L, 1200L - quickLevel * 300L) : 1200L;
+        if (now - solemnCooldowns.getOrDefault(player.getUniqueId(), 0L) < cooldown) return;
+
+        ItemStack quartz = solemn.findButterflyQuartz(player);
+        if (quartz == null && player.getGameMode() != GameMode.CREATIVE) return;
+        if (quartz != null) quartz.setAmount(quartz.getAmount() - 1);
 
         solemnCooldowns.put(player.getUniqueId(), now);
 
-        ItemMeta bowMeta = item.getItemMeta();
-        String model = (bowMeta != null && bowMeta.getItemModel() != null)
-                ? bowMeta.getItemModel().toString() : "";
-        long shootDelay = quickLevel > 0 ? Math.max(5L, 20L - quickLevel * 5L) : 20L;
-
-        Bukkit.getScheduler().runTaskLater(this, () -> {
-            if (!solemn.isSolemnLament(player.getInventory().getItemInMainHand())) return;
-            ItemStack quartz = solemn.findButterflyQuartz(player);
-            if (quartz == null && player.getGameMode() != GameMode.CREATIVE) return;
-            if (quartz != null) quartz.setAmount(quartz.getAmount() - 1);
-            solemn.handleShootManual(player, item, model);
-        }, shootDelay);
+        ItemMeta meta = item.getItemMeta();
+        String model = (meta != null && meta.getItemModel() != null)
+                ? meta.getItemModel().toString() : "";
+        solemn.handleShootManual(player, item, model);
     }
 
     @EventHandler
