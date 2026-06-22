@@ -138,14 +138,14 @@ public class solemnlament {
 
     public ItemStack createItem(String type) {
         return switch (type.toLowerCase()) {
-            case "black"       -> buildItem(Material.BOW, 1002,
+            case "black"       -> applyHiddenQuickChargeV(buildItem(Material.CROSSBOW, 1002,
                     "&#333333&l莊嚴哀悼",
                     "&x&F&F&F&F&F&F人&x&D&1&D&1&D&1死&x&A&3&A&3&A&3後&x&7&4&7&4&7&4會&x&4&6&4&6&4&6去&x&7&4&7&4&7&4往&x&A&3&A&3&A&3何&x&D&1&D&1&D&1方&x&F&F&F&F&F&F？",
-                    "solemnlament:solemn_lament_black", "solemn_lament");
-            case "white"       -> buildItem(Material.BOW, 1003,
+                    "solemnlament:solemn_lament_black", "solemn_lament"));
+            case "white"       -> applyHiddenQuickChargeV(buildItem(Material.CROSSBOW, 1003,
                     "&#FFFFFF&l莊嚴哀悼",
                     "&x&F&F&F&F&F&F人&x&D&1&D&1&D&1死&x&A&3&A&3&A&3後&x&7&4&7&4&7&4會&x&4&6&4&6&4&6去&x&7&4&7&4&7&4往&x&A&3&A&3&A&3何&x&D&1&D&1&D&1方&x&F&F&F&F&F&F？",
-                    "solemnlament:solemn_lament_white", "solemn_lament");
+                    "solemnlament:solemn_lament_white", "solemn_lament"));
             case "butterflies" -> buildItem(Material.ARROW,  1004,
                     "&#FFFFFF生&#D8D8D8蝶&#B1B1B1、&#8A8A8A亡&#636363蝶",
                     "&x&F&F&F&F&F&F人&x&D&1&D&1&D&1死&x&A&3&A&3&A&3後&x&7&4&7&4&7&4會&x&4&6&4&6&4&6去&x&7&4&7&4&7&4往&x&A&3&A&3&A&3何&x&D&1&D&1&D&1方&x&F&F&F&F&F&F？",
@@ -161,6 +161,18 @@ public class solemnlament {
     public void give(Player player, String type) {
         ItemStack item = createItem(type);
         if (item != null) player.getInventory().addItem(item);
+    }
+
+    /** 為莊嚴哀悼弩附加「快速上弦 V」隱藏附魔（無 tooltip、無閃光）。 */
+    private ItemStack applyHiddenQuickChargeV(ItemStack item) {
+        if (item == null) return null;
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.addEnchant(org.bukkit.enchantments.Enchantment.QUICK_CHARGE, 5, true);
+            meta.setEnchantmentGlintOverride(false);
+            item.setItemMeta(meta);
+        }
+        return item;
     }
 
     private ItemStack buildItem(Material material, int cmdData,

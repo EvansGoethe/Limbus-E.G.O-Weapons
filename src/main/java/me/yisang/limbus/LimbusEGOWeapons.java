@@ -154,9 +154,14 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         }
     }
 
-    // ── 莊嚴哀悼射擊（弓拉弓 → 右鍵拉弓播放裝填音；放開時攔截箭矢、改發蝴蝶彈幕）──
+    // ── 莊嚴哀悼射擊（弩兩段式：右鍵上弦 → 再右鍵發射）──
+    //
+    // 由於底材為 CROSSBOW 並隱藏附魔「快速上弦 V」(QUICK_CHARGE 5)，上弦近乎瞬發。
+    // - onWeaponInteract：右鍵時播自訂裝填音，並 mark soundSuppressor 抑制 vanilla 上弦音。
+    // - onSolemnCrossbowLoad：確保上弦消耗的是蝴蝶彈藥（避免普通箭被吃進弩）。
+    // - onSolemnBowShoot：攔截 vanilla 箭矢、清空弩的 chargedProjectiles，改發蝴蝶彈幕。
 
-    // 右鍵拉弓：播放裝填音。弓本身需有蝴蝶彈藥（ARROW）才拉得開，這裡只負責音效。
+    // 右鍵：播放自訂裝填音、提早抑制 vanilla 上弦音。
     @EventHandler(priority = EventPriority.LOWEST)
     public void onWeaponInteract(PlayerInteractEvent event) {
         if (event.getAction() != Action.RIGHT_CLICK_AIR && event.getAction() != Action.RIGHT_CLICK_BLOCK) return;
@@ -165,21 +170,27 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         ItemStack item = event.getItem();
         if (item == null || !solemn.isSolemnLament(item)) return;
 
-        // 無蝴蝶彈藥 → 不准拉弓（含創造、含背包有普通箭的情況）
+        // 無蝴蝶彈藥 → 不准上弦（含創造、含背包只有普通箭的情況）
         if (!solemn.hasButterflyQuartz(player)) {
             event.setCancelled(true);
             return;
         }
+
+        // 提早 mark：涵蓋整個上弦階段，抑制 vanilla 弩的 loading_start/middle/end 音
+        // 1500ms 足以涵蓋無附魔弩的 25 tick 上弦 + 緩衝
+        if (soundSuppressor != null) soundSuppressor.mark(player, 1500L);
 
         int quickLevel = item.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.QUICK_CHARGE);
         String loadSound = (quickLevel > 0)
                 ? "solemnlament:solemn.quick_load." + Math.min(quickLevel, 3)
                 : "solemnlament:solemn.load";
         player.getWorld().playSound(player.getLocation(), loadSound, 0.6f, 1.0f);
-        // 不取消事件：讓弓正常拉開（舉手）動畫
+        // 不取消事件：讓 vanilla 弩正常進入上弦（舉手）動畫
     }
 
-    // 放開弓：攔截原版箭矢，改發蝴蝶彈幕。普通弓弩不得使用蝴蝶彈藥。
+    // 發射：攔截原版箭矢、清空 chargedProjectiles 讓弩可再次上弦，改發蝴蝶彈幕。
+    // 註：若玩家身上同時有蝴蝶與普通箭，vanilla 可能優先選普通箭上弦。
+    // 玩家自行管理彈藥順序（建議蝴蝶放副手或 hotbar 第一格）。
     @EventHandler
     public void onSolemnBowShoot(org.bukkit.event.entity.EntityShootBowEvent event) {
         if (!(event.getEntity() instanceof Player player)) return;
@@ -191,17 +202,19 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
             return;
         }
 
-        // 攔截：不射出原版箭矢、不耗箭、不損耐久
+        // 攔截：不射出原版箭矢、不損耐久
         event.setCancelled(true);
+
+        // 清空弩的 chargedProjectiles（吃進去的蝴蝶在此消耗），讓弩可立即重新上弦
+        if (bow.getItemMeta() instanceof org.bukkit.inventory.meta.CrossbowMeta cbMeta) {
+            cbMeta.setChargedProjectiles(java.util.Collections.emptyList());
+            bow.setItemMeta(cbMeta);
+        }
 
         long now = System.currentTimeMillis();
         int quickLevel = bow.getEnchantmentLevel(org.bukkit.enchantments.Enchantment.QUICK_CHARGE);
         long cooldown = quickLevel > 0 ? Math.max(400L, 1200L - quickLevel * 300L) : 1200L;
         if (now - solemnCooldowns.getOrDefault(player.getUniqueId(), 0L) < cooldown) return;
-
-        ItemStack ammo = solemn.findButterflyQuartz(player);
-        if (ammo == null) return; // 一律需要蝴蝶彈藥才能擊發
-        if (player.getGameMode() != GameMode.CREATIVE) ammo.setAmount(ammo.getAmount() - 1);
 
         solemnCooldowns.put(player.getUniqueId(), now);
 

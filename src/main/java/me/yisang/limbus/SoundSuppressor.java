@@ -34,13 +34,19 @@ public class SoundSuppressor {
         this.pm = ProtocolLibrary.getProtocolManager();
     }
 
-    /** 記錄某玩家剛射擊，於其位置附近短時間內抑制原版弓箭聲音。 */
-    public void mark(Player player) {
+    /** 記錄某玩家剛射擊，於其位置附近短時間內抑制原版弓箭聲音（預設 400ms）。 */
+    public void mark(Player player) { mark(player, 400L); }
+
+    /** 同上，但可指定抑制時長（毫秒）。用於覆蓋較長的上弦階段。 */
+    public void mark(Player player, long durationMs) {
         Location l = player.getLocation();
         if (l.getWorld() == null) return;
+        long expire = System.currentTimeMillis() + durationMs;
+        Mark prev = marks.get(player.getUniqueId());
+        // 不縮短：若先前 mark 的 expire 更晚就保留之
+        if (prev != null && prev.expire() > expire) return;
         marks.put(player.getUniqueId(),
-                new Mark(l.getWorld().getName(), l.getX(), l.getY(), l.getZ(),
-                        System.currentTimeMillis() + 400L));
+                new Mark(l.getWorld().getName(), l.getX(), l.getY(), l.getZ(), expire));
     }
 
     private boolean active(UUID id) {
