@@ -11,8 +11,6 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.player.PlayerAnimationEvent;
-import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -124,20 +122,12 @@ public class TiantuiStar implements EGOWeapon, Listener {
         return item;
     }
 
-    // ── 近戰（無特殊效果，純刀）─────────────────────────────────────────────────
+    // ── 近戰：命中有生命值的實體才播自訂揮刀音 ────────────────────────────────
 
     @Override
-    public void handleMelee(EntityDamageByEntityEvent event, Player attacker) { }
-
-    // ── 揮刀音效（所有揮動都換音；自訂音 tiantui.slash 三選一隨機）──────────────
-
-    @EventHandler
-    public void onSwing(PlayerAnimationEvent event) {
-        if (event.getAnimationType() != PlayerAnimationType.ARM_SWING) return;
-        Player player = event.getPlayer();
-        ItemStack item = player.getInventory().getItemInMainHand();
-        if (!plugin.hasItemId(item, "tiantui_star")) return;
-        player.getWorld().playSound(player.getLocation(),
+    public void handleMelee(EntityDamageByEntityEvent event, Player attacker) {
+        if (!(event.getEntity() instanceof LivingEntity)) return;
+        attacker.getWorld().playSound(attacker.getLocation(),
                 "tiantui_star:tiantui.slash", 1.0f, 1.0f);
     }
 
