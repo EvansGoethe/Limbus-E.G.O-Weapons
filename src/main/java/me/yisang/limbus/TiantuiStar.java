@@ -106,6 +106,24 @@ public class TiantuiStar implements EGOWeapon, Listener {
         return item;
     }
 
+    // ── 插翅虎組合包 ───────────────────────────────────────────────────────────
+
+    public ItemStack createChatuhuPack(int amount) {
+        ItemStack item = new ItemStack(Material.TRIAL_KEY, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(plugin.translateHexColorCodes("&#E67E22插翅虎"));
+            meta.setLore(List.of(
+                    plugin.translateHexColorCodes("&7天退星刀 + 10 猛虎標彈 + 20 虎標彈"),
+                    plugin.translateHexColorCodes("&8右鍵開啟（需 4 格空位，開後消失）")));
+            meta.setItemModel(NamespacedKey.fromString("tiantui_star:lei"));
+            meta.getPersistentDataContainer().set(
+                    plugin.getItemIdKey(), PersistentDataType.STRING, "chatuhu");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
     // ── 近戰（無特殊效果，純刀）─────────────────────────────────────────────────
 
     @Override
@@ -123,7 +141,7 @@ public class TiantuiStar implements EGOWeapon, Listener {
                 "tiantui_star:tiantui.slash", 1.0f, 1.0f);
     }
 
-    // ── 右鍵：開始定身蓄力 ──────────────────────────────────────────────────────
+    // ── 右鍵：開始定身蓄力 / 開啟插翅虎組合包 ──────────────────────────────────
 
     @EventHandler
     public void onInteract(PlayerInteractEvent event) {
@@ -133,6 +151,14 @@ public class TiantuiStar implements EGOWeapon, Listener {
 
         Player player = event.getPlayer();
         ItemStack item = player.getInventory().getItemInMainHand();
+
+        // 插翅虎組合包：右鍵開啟
+        if (plugin.hasItemId(item, "chatuhu")) {
+            event.setCancelled(true);
+            openChatuhuPack(player, item);
+            return;
+        }
+
         if (!plugin.hasItemId(item, "tiantui_star")) return;
 
         event.setCancelled(true);
@@ -199,6 +225,47 @@ public class TiantuiStar implements EGOWeapon, Listener {
         }.runTaskTimer(plugin, 1L, 1L);
 
         charging.put(player.getUniqueId(), new Charge(savage, task));
+    }
+
+    // ── 插翅虎開啟邏輯 ──────────────────────────────────────────────────────────
+
+    private void openChatuhuPack(Player player, ItemStack pack) {
+        // 需 4 格空位（刀、猛虎標彈、虎標彈、組合包暫存／緩衝）
+        if (countFreeSlots(player) < 4) {
+            player.sendActionBar(plugin.translateHexColorCodes(
+                    "&#FF5555背包需 4 格空位才能開啟插翅虎"));
+            return;
+        }
+
+        // 消耗 1 個組合包
+        if (pack.getAmount() <= 1) {
+            player.getInventory().setItemInMainHand(null);
+        } else {
+            pack.setAmount(pack.getAmount() - 1);
+        }
+
+        // 給予 1 刀 + 10 猛虎標彈 + 20 虎標彈
+        player.getInventory().addItem(
+                createItem(),
+                createSavageTigerMark(10),
+                createTigerMark(20));
+
+        player.getWorld().playSound(player.getLocation(),
+                org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.2f);
+        player.getWorld().spawnParticle(org.bukkit.Particle.END_ROD,
+                player.getLocation().add(0, 1.0, 0), 16, 0.4, 0.4, 0.4, 0.02);
+        player.sendActionBar(plugin.translateHexColorCodes(
+                "&#E67E22插翅虎 &7已開啟 &8(天退星刀 + 10 猛 + 20 普)"));
+    }
+
+    private int countFreeSlots(Player player) {
+        int free = 0;
+        org.bukkit.inventory.PlayerInventory inv = player.getInventory();
+        for (int i = 0; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (s == null || s.getType().isAir()) free++;
+        }
+        return free;
     }
 
     // ── 受擊中斷 ────────────────────────────────────────────────────────────────
