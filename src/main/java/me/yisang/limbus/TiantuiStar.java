@@ -11,6 +11,8 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.player.PlayerAnimationEvent;
+import org.bukkit.event.player.PlayerAnimationType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.EquipmentSlot;
@@ -109,6 +111,18 @@ public class TiantuiStar implements EGOWeapon, Listener {
     @Override
     public void handleMelee(EntityDamageByEntityEvent event, Player attacker) { }
 
+    // ── 揮刀音效（所有揮動都換音；自訂音 tiantui.slash 三選一隨機）──────────────
+
+    @EventHandler
+    public void onSwing(PlayerAnimationEvent event) {
+        if (event.getAnimationType() != PlayerAnimationType.ARM_SWING) return;
+        Player player = event.getPlayer();
+        ItemStack item = player.getInventory().getItemInMainHand();
+        if (!plugin.hasItemId(item, "tiantui_star")) return;
+        player.getWorld().playSound(player.getLocation(),
+                "tiantui_star:tiantui.slash", 1.0f, 1.0f);
+    }
+
     // ── 右鍵：開始定身蓄力 ──────────────────────────────────────────────────────
 
     @EventHandler
@@ -139,8 +153,18 @@ public class TiantuiStar implements EGOWeapon, Listener {
         // 定身：重緩速（不顯示圖示/粒子）
         player.addPotionEffect(new PotionEffect(
                 PotionEffectType.SLOWNESS, ticks + 2, 200, false, false, false));
-        player.getWorld().playSound(player.getLocation(),
-                Sound.BLOCK_GRINDSTONE_USE, 0.7f, savage ? 0.6f : 1.0f);
+
+        // 蓄力音效：
+        //  - 普通：單次播 charge_tiger
+        //  - 猛擊：3 段重疊。t=0 播 1（時長 ~2.0s），t=20（1 播到一半 1.0s）接 2，
+        //          t=35（2 播到一半 0.75s 後）接 3。配對 3 秒蓄力。
+        if (!savage) {
+            player.getWorld().playSound(player.getLocation(),
+                    "tiantui_star:tiantui.charge_tiger", 0.9f, 1.0f);
+        } else {
+            player.getWorld().playSound(player.getLocation(),
+                    "tiantui_star:tiantui.charge_savage_1", 0.9f, 1.0f);
+        }
 
         BukkitTask task = new BukkitRunnable() {
             int t = 0;
@@ -150,6 +174,16 @@ public class TiantuiStar implements EGOWeapon, Listener {
                     charging.remove(player.getUniqueId());
                     cancel();
                     return;
+                }
+                // 猛擊蓄力的後續段
+                if (savage) {
+                    if (t == 20) {
+                        player.getWorld().playSound(player.getLocation(),
+                                "tiantui_star:tiantui.charge_savage_2", 0.9f, 1.0f);
+                    } else if (t == 35) {
+                        player.getWorld().playSound(player.getLocation(),
+                                "tiantui_star:tiantui.charge_savage_3", 0.9f, 1.0f);
+                    }
                 }
                 // 蓄力環狀粒子
                 player.getWorld().spawnParticle(savage ? Particle.FLAME : Particle.CRIT,
@@ -176,6 +210,11 @@ public class TiantuiStar implements EGOWeapon, Listener {
         if (c == null) return;
         c.task().cancel();
         player.removePotionEffect(PotionEffectType.SLOWNESS);
+        // 停掉所有蓄力音檔，避免中斷後音檔還繼續播
+        player.stopSound("tiantui_star:tiantui.charge_tiger");
+        player.stopSound("tiantui_star:tiantui.charge_savage_1");
+        player.stopSound("tiantui_star:tiantui.charge_savage_2");
+        player.stopSound("tiantui_star:tiantui.charge_savage_3");
         player.getWorld().playSound(player.getLocation(), Sound.ITEM_SHIELD_BREAK, 0.6f, 1.2f);
         player.sendActionBar(plugin.translateHexColorCodes("&#FF5555蓄力中斷"));
     }
@@ -205,7 +244,7 @@ public class TiantuiStar implements EGOWeapon, Listener {
         final Set<UUID> hitOnce = new HashSet<>();
 
         player.getWorld().playSound(player.getLocation(),
-                Sound.ITEM_TRIDENT_THROW, 1.0f, savage ? 0.7f : 1.1f);
+                "tiantui_star:tiantui.dash", 1.0f, savage ? 0.85f : 1.0f);
 
         new BukkitRunnable() {
             int t = 0;
