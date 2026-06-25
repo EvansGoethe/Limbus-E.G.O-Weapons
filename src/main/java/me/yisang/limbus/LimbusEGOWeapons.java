@@ -56,6 +56,7 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
 
     public NamespacedKey getItemIdKey() { return ITEM_ID_KEY; }
     public solemnlament getSolemn() { return solemn; }
+    public TiantuiStar getTiantui() { return tiantui; }
     public EGOWeapon getWeaponModule(String id) { return weaponModules.get(id); }
 
     public boolean hasItemId(ItemStack item, String id) {
