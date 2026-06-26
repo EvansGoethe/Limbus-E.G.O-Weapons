@@ -81,6 +81,60 @@ public class TwilightWeapon implements EGOWeapon, Listener {
         return item;
     }
 
+    // ── 薄暝獲取包（終末鳥）───────────────────────────────────────────────────
+
+    public ItemStack createApocalypseBirdPack(int amount) {
+        ItemStack item = new ItemStack(Material.TRIAL_KEY, Math.max(1, amount));
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.setDisplayName(plugin.translateHexColorCodes("&#6C5B9E終末鳥"));
+            meta.setLore(List.of(
+                    plugin.translateHexColorCodes("&7黃昏審判，終末降臨。"),
+                    plugin.translateHexColorCodes("&8右鍵開啟以領受薄暝（需 1 格空位，開後消失）")));
+            meta.setItemModel(NamespacedKey.fromString("twilight:apocalypse_bird"));
+            meta.getPersistentDataContainer().set(
+                    plugin.getItemIdKey(), PersistentDataType.STRING, "apocalypse_bird");
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    private void openApocalypseBirdPack(Player player, ItemStack pack) {
+        if (countFreeSlots(player) < 1) {
+            player.sendActionBar(plugin.translateHexColorCodes("&#FF5555背包需 1 格空位才能開啟"));
+            return;
+        }
+        if (pack.getAmount() <= 1) player.getInventory().setItemInMainHand(null);
+        else pack.setAmount(pack.getAmount() - 1);
+
+        // 薄暝放 storage（slot 9-35），避免進主手
+        org.bukkit.inventory.PlayerInventory inv = player.getInventory();
+        int slot = -1;
+        for (int i = 9; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (s == null || s.getType().isAir()) { slot = i; break; }
+        }
+        if (slot >= 0) inv.setItem(slot, createItem());
+        else player.getWorld().dropItemNaturally(player.getLocation(), createItem());
+
+        Location c = player.getLocation().add(0, 1.0, 0);
+        player.getWorld().spawnParticle(Particle.WHITE_ASH, c, 24, 0.5, 0.6, 0.5, 0.02);
+        player.getWorld().spawnParticle(Particle.DUST, c, 12, 0.4, 0.5, 0.4,
+                new Particle.DustOptions(Color.fromRGB(0x6C5B9E), 1.4f));
+        player.getWorld().playSound(player.getLocation(), Sound.ENTITY_PHANTOM_AMBIENT, 0.8f, 0.6f);
+        player.sendActionBar(plugin.translateHexColorCodes("&#6C5B9E薄暝 &7已領受"));
+    }
+
+    private int countFreeSlots(Player player) {
+        int free = 0;
+        org.bukkit.inventory.PlayerInventory inv = player.getInventory();
+        for (int i = 0; i < 36; i++) {
+            ItemStack s = inv.getItem(i);
+            if (s == null || s.getType().isAir()) free++;
+        }
+        return free;
+    }
+
     // ── 近戰：瀕死增傷 + 部分真實傷害 ───────────────────────────────────────────
 
     @Override
@@ -112,8 +166,16 @@ public class TwilightWeapon implements EGOWeapon, Listener {
         if (a != Action.RIGHT_CLICK_AIR && a != Action.RIGHT_CLICK_BLOCK) return;
 
         Player player = event.getPlayer();
-        if (!player.isSneaking()) return;
         ItemStack item = player.getInventory().getItemInMainHand();
+
+        // 終末鳥獲取包：右鍵開啟
+        if (plugin.hasItemId(item, "apocalypse_bird")) {
+            event.setCancelled(true);
+            openApocalypseBirdPack(player, item);
+            return;
+        }
+
+        if (!player.isSneaking()) return;
         if (!plugin.hasItemId(item, "twilight")) return;
 
         event.setCancelled(true);

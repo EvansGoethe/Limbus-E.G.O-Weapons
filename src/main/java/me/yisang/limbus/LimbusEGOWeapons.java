@@ -37,8 +37,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     private TwilightWeapon twilight;
     private SoundSuppressor soundSuppressor;
 
-    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/2.12/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.12.zip";
-    private static final String PACK_HASH = "89494b914893cfbb89f99d3c8d3ea0ffcbb40fba";
+    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/2.13/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.13.zip";
+    private static final String PACK_HASH = "15925d0487e2ae1fcc01059da2fff84f2f531d10";
     private static final String PACK_FILENAME = "resourcepack.zip";
 
     /**
@@ -319,6 +319,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
                 target.getInventory().addItem(tiantui.createSavageTigerMark(amount));
             } else if ("chatuhu".equals(weaponId)) {
                 target.getInventory().addItem(tiantui.createChatuhuPack(amount));
+            } else if ("apocalypse_bird".equals(weaponId)) {
+                target.getInventory().addItem(twilight.createApocalypseBirdPack(amount));
             } else if (weaponModules.containsKey(weaponId)) {
                 for (int i = 0; i < amount; i++) weaponModules.get(weaponId).give(target);
             } else if (List.of("black", "white", "butterflies", "shield").contains(weaponId)) {
@@ -339,6 +341,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
             player.getInventory().addItem(tiantui.createSavageTigerMark(1));
         } else if ("chatuhu".equals(first)) {
             player.getInventory().addItem(tiantui.createChatuhuPack(1));
+        } else if ("apocalypse_bird".equals(first)) {
+            player.getInventory().addItem(twilight.createApocalypseBirdPack(1));
         } else if (weaponModules.containsKey(first)) {
             weaponModules.get(first).give(player);
         } else if (List.of("black", "white", "butterflies", "shield").contains(first)) {
@@ -352,7 +356,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         if (args.length == 1) {
             List<String> completions = new ArrayList<>(
                     List.of("brush", "black", "white", "butterflies", "shield", "mimicry", "dacapo",
-                            "tiantui", "tiger_mark", "savage_tiger_mark", "chatuhu", "twilight", "admin"));
+                            "tiantui", "tiger_mark", "savage_tiger_mark", "chatuhu", "twilight",
+                            "apocalypse_bird", "admin"));
             return completions.stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
         }
         return Collections.emptyList();
