@@ -56,7 +56,7 @@ public class TwilightWeapon implements EGOWeapon, Listener {
         ItemStack item = new ItemStack(Material.DIAMOND_SWORD);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(plugin.translateHexColorCodes("&#6C5B9E薄暝"));
+            meta.setDisplayName(plugin.translateHexColorCodes("&#FFD700薄暝"));
             meta.setLore(List.of(
                     plugin.translateHexColorCodes("&7終末將至，黃昏執刃。"),
                     plugin.translateHexColorCodes("&8越接近死亡，斬擊越致命；部分傷害無視防禦。"),
@@ -87,7 +87,7 @@ public class TwilightWeapon implements EGOWeapon, Listener {
         ItemStack item = new ItemStack(Material.TRIAL_KEY, Math.max(1, amount));
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(plugin.translateHexColorCodes("&#6C5B9E終末鳥"));
+            meta.setDisplayName(plugin.translateHexColorCodes("&#FFD700終末鳥"));
             meta.setLore(List.of(
                     plugin.translateHexColorCodes("&7黃昏審判，終末降臨。"),
                     plugin.translateHexColorCodes("&8右鍵開啟以領受薄暝（需 1 格空位，開後消失）")));
