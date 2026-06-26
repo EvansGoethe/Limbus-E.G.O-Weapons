@@ -1,18 +1,22 @@
 package me.yisang.limbusweapons.item;
 
 import me.yisang.limbusweapons.event.WeaponEvents;
-import net.minecraft.entity.LivingEntity;
+import net.minecraft.component.DataComponentTypes;
+import net.minecraft.component.type.ChargedProjectilesComponent;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.item.consume.UseAction;
 import net.minecraft.server.world.ServerWorld;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.world.World;
 
-// 莊嚴哀悼：長按右鍵蓄力（弓式舉臂），放開發射彈幕
-// isBlack=true → 8 傷害 + 凋零；false → 4 傷害 + 失明
+/**
+ * 莊嚴哀悼 — 弩式兩段（近乎瞬發上膛）：
+ *  第一下右鍵：瞬間上膛（消耗 1 蝴蝶，保持上膛狀態）。
+ *  第二下右鍵：發射蝴蝶彈幕。
+ * isBlack=true → 8 傷害 + 凋零；false → 4 傷害 + 失明。
+ */
 public class SolemnLamentItem extends Item {
     public final boolean isBlack;
 
@@ -21,37 +25,32 @@ public class SolemnLamentItem extends Item {
         this.isBlack = isBlack;
     }
 
-    @Override
-    public UseAction getUseAction(ItemStack stack) {
-        return UseAction.BOW;
-    }
-
-    @Override
-    public int getMaxUseTime(ItemStack stack, LivingEntity user) {
-        return 72000;
+    private static boolean isCharged(ItemStack stack) {
+        ChargedProjectilesComponent c = stack.get(DataComponentTypes.CHARGED_PROJECTILES);
+        return c != null && !c.isEmpty();
     }
 
     @Override
     public ActionResult use(World world, PlayerEntity user, Hand hand) {
         if (hand != Hand.MAIN_HAND) return ActionResult.PASS;
-        // 沒有彈藥就不舉臂
-        if (!user.getAbilities().creativeMode && WeaponEvents.findButterfly(user) == null) {
-            return ActionResult.FAIL;
-        }
-        if (!world.isClient) {
-            WeaponEvents.onSolemnLamentDraw(user, world);
-        }
-        user.setCurrentHand(hand);
-        return ActionResult.CONSUME;
-    }
+        ItemStack stack = user.getStackInHand(hand);
+        if (world.isClient) return ActionResult.SUCCESS;
+        ServerWorld sw = (ServerWorld) world;
 
-    @Override
-    public boolean onStoppedUsing(ItemStack stack, World world, LivingEntity user, int remainingUseTicks) {
-        if (!(user instanceof PlayerEntity player)) return false;
-        if (world.isClient) return false;
-        int drawTicks = getMaxUseTime(stack, user) - remainingUseTicks;
-        if (drawTicks < 5) return false;
-        WeaponEvents.handleSolemnLamentFire(player, (ServerWorld) world, this);
-        return true;
+        if (isCharged(stack)) {
+            // 第二段：發射
+            WeaponEvents.fireSolemnCharged(user, sw, this);
+            stack.set(DataComponentTypes.CHARGED_PROJECTILES, ChargedProjectilesComponent.DEFAULT);
+            return ActionResult.SUCCESS;
+        }
+
+        // 第一段：瞬間上膛
+        ItemStack ammo = WeaponEvents.findButterfly(user);
+        if (ammo == null && !user.getAbilities().creativeMode) return ActionResult.FAIL;
+        if (ammo != null) ammo.decrement(1);
+        stack.set(DataComponentTypes.CHARGED_PROJECTILES,
+                ChargedProjectilesComponent.of(new ItemStack(ModItems.BUTTERFLY_QUARTZ)));
+        WeaponEvents.onSolemnLamentDraw(user, world);
+        return ActionResult.SUCCESS;
     }
 }

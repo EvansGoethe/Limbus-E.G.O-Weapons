@@ -239,6 +239,11 @@ public class WeaponEvents {
         spawnSolemnProjectile(player, world, weapon.isBlack);
     }
 
+    /** 弩式發射：彈藥已於上膛時消耗，此處只負責射出。 */
+    public static void fireSolemnCharged(PlayerEntity player, ServerWorld world, SolemnLamentItem weapon) {
+        spawnSolemnProjectile(player, world, weapon.isBlack);
+    }
+
     private static void spawnSolemnProjectile(PlayerEntity player, ServerWorld world, boolean isBlack) {
         ItemStack visual = new ItemStack(ModItems.BUTTERFLY_QUARTZ);
         ItemEntity proj  = new ItemEntity(world,
