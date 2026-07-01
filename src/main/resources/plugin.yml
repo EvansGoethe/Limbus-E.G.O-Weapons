@@ -1,5 +1,5 @@
 name: LimbusEGOWeapons
-version: 2.6.6
+version: 3.0.0
 main: me.yisang.limbus.LimbusEGOWeapons
 description: Face the sin, Save the E.G.O.
 api-version: "1.21.4"

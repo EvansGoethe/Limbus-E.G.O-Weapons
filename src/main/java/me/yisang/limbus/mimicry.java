@@ -49,7 +49,8 @@ public class mimicry implements EGOWeapon, Listener {
     public void handleMelee(EntityDamageByEntityEvent event, Player attacker) {
         // 修正：先決定是否暴擊並修改傷害值，再計算吸血量
         // 原本的寫法在加暴擊前就抓了 getFinalDamage()，導致暴擊時吸血量低估
-        if (Math.random() < 0.10) {
+        boolean crit = Math.random() < 0.10;
+        if (crit) {
             double bonus = 40.0 + (Math.random() * 50.0);
             event.setDamage(event.getDamage() + bonus);
             attacker.getWorld().spawnParticle(
@@ -60,5 +61,11 @@ public class mimicry implements EGOWeapon, Listener {
         double heal = event.getFinalDamage() * 0.25;
         double maxHealth = attacker.getAttribute(Attribute.MAX_HEALTH).getValue();
         attacker.setHealth(Math.min(maxHealth, attacker.getHealth() + heal));
+
+        // 暴擊時給自己 3 potency / 4 count 的強壯（下次 4 擊 +30% 出手）
+        if (crit && plugin.getStatusManager() != null) {
+            plugin.getStatusManager().apply(attacker,
+                    me.yisang.limbus.status.StatusEffect.POWER, 3, 4, attacker);
+        }
     }
 }

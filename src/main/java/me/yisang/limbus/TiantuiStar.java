@@ -420,6 +420,17 @@ public class TiantuiStar implements EGOWeapon, Listener {
                     target.setFireTicks(Math.max(target.getFireTicks(), savage ? 100 : 60));
                     if (savage) target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 60, 1));
 
+                    // Limbus 屬性：震顫 + 燒傷（猛擊倍量）
+                    if (plugin.getStatusManager() != null) {
+                        int tremorP = savage ? 8 : 5;
+                        int burnP   = savage ? 6 : 4;
+                        int burnC   = savage ? 4 : 3;
+                        plugin.getStatusManager().apply(target,
+                                me.yisang.limbus.status.StatusEffect.TREMOR, tremorP, 6, player);
+                        plugin.getStatusManager().apply(target,
+                                me.yisang.limbus.status.StatusEffect.BURN, burnP, burnC, player);
+                    }
+
                     target.getWorld().playSound(target.getLocation(),
                             Sound.ENTITY_PLAYER_ATTACK_SWEEP, 1.0f, savage ? 0.7f : 1.0f);
                 }

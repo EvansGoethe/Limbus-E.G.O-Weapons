@@ -23,6 +23,17 @@ public class ringbrush implements EGOWeapon, Listener {
             PotionEffectType.WITHER
     };
 
+    /** Limbus 隨機池：全屬性中排除會反手 buff 敵人的（強壯 / 守護 / 迅捷）。 */
+    private static final me.yisang.limbus.status.StatusEffect[] LIMBUS_POOL = {
+            me.yisang.limbus.status.StatusEffect.BLEED,
+            me.yisang.limbus.status.StatusEffect.BURN,
+            me.yisang.limbus.status.StatusEffect.FRAGILE,
+            me.yisang.limbus.status.StatusEffect.SEDUCTION,
+            me.yisang.limbus.status.StatusEffect.RUPTURE,
+            me.yisang.limbus.status.StatusEffect.TREMOR,
+            me.yisang.limbus.status.StatusEffect.BIND,
+    };
+
     public ringbrush(LimbusEGOWeapons plugin) { this.plugin = plugin; }
 
     @Override
@@ -75,6 +86,12 @@ public class ringbrush implements EGOWeapon, Listener {
                     new Particle.DustOptions(
                             Color.fromRGB(random.nextInt(255), random.nextInt(100), random.nextInt(100)),
                             1.5f));
+
+            // Limbus 隨機池：一擊 1 potency / 3 count；雙擊命中會兩擊各抽一次
+            if (plugin.getStatusManager() != null) {
+                me.yisang.limbus.status.StatusEffect pick = LIMBUS_POOL[random.nextInt(LIMBUS_POOL.length)];
+                plugin.getStatusManager().apply(target, pick, 1, 3, player);
+            }
         }
     }
 

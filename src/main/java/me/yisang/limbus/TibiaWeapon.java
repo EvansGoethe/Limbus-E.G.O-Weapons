@@ -20,6 +20,9 @@ import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.util.Vector;
+import me.yisang.limbus.status.StatusEffect;
+import me.yisang.limbus.status.StatusManager;
+import me.yisang.limbus.status.StatusState;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -40,15 +43,18 @@ import java.util.UUID;
  */
 public class TibiaWeapon implements EGOWeapon, Listener {
 
-    private static final int BLEED_HIT_AMPLIFIER_ADD = 1;       // 每擊 +2 stacks（amplifier +1）
-    private static final int BLEED_MAX_AMPLIFIER    = 9;        // 上限 10 stacks
-    private static final int BLEED_DURATION_TICKS   = 160;      // 8 秒
-    private static final int SLASH_BLEED_AMPLIFIER_ADD = 3;     // Anatomize +6 stacks
-    private static final double MELODY_PER_2STACKS = 0.03;      // 每 2 stacks +3%
-    private static final double MELODY_MAX_BONUS   = 0.30;
-    private static final double TRUE_FRACTION_SLASH = 0.35;     // Anatomize 真實傷害占比
+    // ── Limbus BLEED 屬性參數 ──
+    private static final int BLEED_HIT_POTENCY = 3;             // 普攻 +3 potency
+    private static final int BLEED_HIT_COUNT   = 2;             // 普攻 +2 count
+    private static final int SLASH_BLEED_POTENCY = 12;          // Anatomize +12 potency
+    private static final int SLASH_BLEED_COUNT   = 6;           // Anatomize +6 count
+    private static final int SLASH_FORCE_TRIGGER = 3;           // Anatomize 強制引爆 3 次
+    private static final double MELODY_PER_3POTENCY = 0.03;     // 每 3 potency +3%
+    private static final double MELODY_MAX_BONUS    = 0.30;
+
+    private static final double TRUE_FRACTION_SLASH = 0.35;
     private static final long SPECIAL_COOLDOWN_MS = 8000L;
-    private static final int CHARGE_TICKS = 40;                 // 2 秒
+    private static final int CHARGE_TICKS = 40;
     private static final double SLASH_RANGE = 5.0;
     private static final double SLASH_BASE = 16.0;
 
@@ -100,15 +106,13 @@ public class TibiaWeapon implements EGOWeapon, Listener {
     public void handleMelee(EntityDamageByEntityEvent event, Player attacker) {
         if (!(event.getEntity() instanceof LivingEntity target)) return;
 
-        int currentAmp = currentBleedAmplifier(target);
-        double stacks = currentAmp + 1; // amplifier 0 = 1 stack
-        double bonus = Math.min(MELODY_MAX_BONUS, Math.floor(stacks / 2.0) * MELODY_PER_2STACKS);
-
+        double bonus = melodyBonus(target);
         event.setDamage(event.getDamage() * (1.0 + bonus));
 
-        int newAmp = Math.min(BLEED_MAX_AMPLIFIER, currentAmp + BLEED_HIT_AMPLIFIER_ADD);
-        target.addPotionEffect(new PotionEffect(PotionEffectType.POISON,
-                BLEED_DURATION_TICKS, newAmp, false, true, true));
+        StatusManager sm = plugin.getStatusManager();
+        if (sm != null) {
+            sm.apply(target, StatusEffect.BLEED, BLEED_HIT_POTENCY, BLEED_HIT_COUNT, attacker);
+        }
 
         target.getWorld().spawnParticle(Particle.DUST,
                 target.getLocation().add(0, 1.0, 0), 8, 0.3, 0.4, 0.3, 0,
@@ -116,11 +120,21 @@ public class TibiaWeapon implements EGOWeapon, Listener {
         if (bonus > 0) {
             target.getWorld().playSound(target.getLocation(), Sound.ENTITY_PLAYER_HURT, 0.6f, 0.5f);
         }
+
+        // Melody 加成即時提示：讓玩家看見流血 potency 換來的 %
+        int bleedPot = sm == null || sm.get(target) == null ? 0 : sm.get(target).potency(StatusEffect.BLEED);
+        attacker.sendActionBar(plugin.translateHexColorCodes(
+                "&#8B0000提比婭之旋律 &#FFFFFF+" + (int) Math.round(bonus * 100) + "% &7│ &#FF5555流血 &#FFFFFF" + bleedPot));
     }
 
-    private int currentBleedAmplifier(LivingEntity target) {
-        PotionEffect eff = target.getPotionEffect(PotionEffectType.POISON);
-        return eff == null ? -1 : eff.getAmplifier();
+    /** Melody 加成：讀目標身上的 BLEED potency，每 3 potency +3%，上限 30%。 */
+    private double melodyBonus(LivingEntity target) {
+        StatusManager sm = plugin.getStatusManager();
+        if (sm == null) return 0.0;
+        StatusState s = sm.get(target);
+        if (s == null) return 0.0;
+        int potency = s.potency(StatusEffect.BLEED);
+        return Math.min(MELODY_MAX_BONUS, Math.floor(potency / 3.0) * MELODY_PER_3POTENCY);
     }
 
     // ── 潛行右鍵：蓄力解剖斬 ────────────────────────────────────────────────────
@@ -169,6 +183,9 @@ public class TibiaWeapon implements EGOWeapon, Listener {
                         new Particle.DustOptions(Color.fromRGB(0x8B0000), 1.3f));
                 player.getWorld().spawnParticle(Particle.CRIMSON_SPORE, c, 3, 0.4, 0.4, 0.4, 0.01);
                 t++;
+                // 蓄力進度條（每 tick 更新）
+                player.sendActionBar(plugin.translateHexColorCodes(
+                        "&#8B0000◆ 解剖斬蓄力 " + chargeBar(t, CHARGE_TICKS)));
                 if (t >= CHARGE_TICKS) {
                     cancel();
                     charging.remove(uid);
@@ -218,6 +235,8 @@ public class TibiaWeapon implements EGOWeapon, Listener {
             }
         }
 
+        int hitCount = 0;
+        int totalBleedApplied = 0;
         player.setMetadata("lsmp_custom_damage", new org.bukkit.metadata.FixedMetadataValue(plugin, true));
         try {
             for (Entity e : player.getNearbyEntities(SLASH_RANGE, SLASH_RANGE, SLASH_RANGE)) {
@@ -228,10 +247,8 @@ public class TibiaWeapon implements EGOWeapon, Listener {
                 double angle = look.angle(to.normalize());
                 if (angle > Math.toRadians(60)) continue;
 
-                // Melody 加成：本次結算前的 Bleed 層數
-                int amp = currentBleedAmplifier(target);
-                double stacks = amp + 1;
-                double bonus = Math.min(MELODY_MAX_BONUS, Math.floor(stacks / 2.0) * MELODY_PER_2STACKS);
+                // Melody 加成：本次結算前的 BLEED potency
+                double bonus = melodyBonus(target);
                 double dmg = SLASH_BASE * (1.0 + bonus);
 
                 target.setNoDamageTicks(0);
@@ -239,14 +256,37 @@ public class TibiaWeapon implements EGOWeapon, Listener {
                 if (target.isValid() && !target.isDead()) {
                     dealTrueDamage(target, dmg * TRUE_FRACTION_SLASH, player);
                 }
-                // 大幅疊層 Bleed
-                int newAmp = Math.min(BLEED_MAX_AMPLIFIER, amp + SLASH_BLEED_AMPLIFIER_ADD);
-                target.addPotionEffect(new PotionEffect(PotionEffectType.POISON,
-                        BLEED_DURATION_TICKS, newAmp, false, true, true));
+
+                // 大幅疊 Limbus BLEED 並強制引爆
+                StatusManager sm = plugin.getStatusManager();
+                if (sm != null && target.isValid() && !target.isDead()) {
+                    sm.apply(target, StatusEffect.BLEED, SLASH_BLEED_POTENCY, SLASH_BLEED_COUNT, player);
+                    sm.triggerBleed(target, player, SLASH_FORCE_TRIGGER);
+                    totalBleedApplied += SLASH_BLEED_POTENCY;
+                }
+                hitCount++;
             }
         } finally {
             player.removeMetadata("lsmp_custom_damage", plugin);
         }
+
+        // 結算 ActionBar：命中數 + 疊加流血總量
+        if (hitCount == 0) {
+            player.sendActionBar(plugin.translateHexColorCodes("&#8B0000◆ 解剖斬 &7未命中"));
+        } else {
+            player.sendActionBar(plugin.translateHexColorCodes(
+                    "&#8B0000◆ 解剖斬 &#FFFFFF命中 " + hitCount + " &7│ &#FF5555流血 +" + totalBleedApplied
+                            + " &7│ &#FFAA00引爆 " + SLASH_FORCE_TRIGGER + " 次"));
+        }
+    }
+
+    /** 蓄力進度條：▰▰▱▱▱ 40% 這種樣式，共 10 格。 */
+    private String chargeBar(int cur, int max) {
+        int filled = Math.min(10, cur * 10 / Math.max(1, max));
+        StringBuilder sb = new StringBuilder("&#FFFFFF");
+        for (int i = 0; i < 10; i++) sb.append(i < filled ? "▰" : "&#555555▱&#FFFFFF");
+        sb.append(" ").append(cur * 100 / Math.max(1, max)).append("%");
+        return sb.toString();
     }
 
     // ── 被動：Corpus 護體（減弱火/毒/凋零 debuff）───────────────────────────────
@@ -257,9 +297,8 @@ public class TibiaWeapon implements EGOWeapon, Listener {
                 ItemStack main = p.getInventory().getItemInMainHand();
                 if (!plugin.hasItemId(main, "tibia")) continue;
 
-                // 凋零 / 毒 / 燃燒：全部降階（amplifier 減半，向下取整）
+                // 凋零 / 燃燒：降階（POISON 不再是 bleed 載體，交回 vanilla 處理）
                 weaken(p, PotionEffectType.WITHER);
-                weaken(p, PotionEffectType.POISON);
                 if (p.getFireTicks() > 20) p.setFireTicks(Math.max(20, p.getFireTicks() / 2));
             }
         }, 20L, 20L);

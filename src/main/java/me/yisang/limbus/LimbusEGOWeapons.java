@@ -37,9 +37,11 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     private TwilightWeapon twilight;
     private TibiaWeapon tibia;
     private SoundSuppressor soundSuppressor;
+    private me.yisang.limbus.status.StatusManager statusManager;
+    private me.yisang.limbus.status.SanityManager sanityManager;
 
-    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/v.2.15/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.15.zip";
-    private static final String PACK_HASH = "126dcc7100d594f2a7589ecebdc3dd7b8c44a052";
+    private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/v.2.16/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.16.zip";
+    private static final String PACK_HASH = "df6b705101bb96fca53e25793610c24c3e19b4f1";
     private static final String PACK_FILENAME = "resourcepack.zip";
 
     /**
@@ -91,6 +93,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     public TwilightWeapon getTwilight() { return twilight; }
     public TibiaWeapon getTibia() { return tibia; }
     public EGOWeapon getWeaponModule(String id) { return weaponModules.get(id); }
+    public me.yisang.limbus.status.StatusManager getStatusManager() { return statusManager; }
+    public me.yisang.limbus.status.SanityManager getSanityManager() { return sanityManager; }
 
     public boolean hasItemId(ItemStack item, String id) {
         if (item == null || !item.hasItemMeta()) return false;
@@ -113,6 +117,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         this.tiantui = new TiantuiStar(this);
         this.twilight = new TwilightWeapon(this);
         this.tibia = new TibiaWeapon(this);
+        WCorpKnife wknife = new WCorpKnife(this);
+        ShadowBladesinger blade = new ShadowBladesinger(this);
 
         weaponModules.put("mimicry", m);
         weaponModules.put("dacapo",  d);
@@ -120,6 +126,8 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         weaponModules.put("tiantui", tiantui);
         weaponModules.put("twilight", twilight);
         weaponModules.put("tibia", tibia);
+        weaponModules.put("w_corp_knife", wknife);
+        weaponModules.put("bladesinger", blade);
 
         registerModule(m);
         registerModule(d);
@@ -127,8 +135,18 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         registerModule(tiantui);
         registerModule(twilight);
         registerModule(tibia);
+        registerModule(wknife);
+        registerModule(blade);
 
         startShieldTick();
+
+        // Limbus 屬性系統 + 理智值
+        this.sanityManager = new me.yisang.limbus.status.SanityManager(this);
+        this.statusManager = new me.yisang.limbus.status.StatusManager(this, sanityManager);
+        this.sanityManager.start();
+        this.statusManager.start();
+        getServer().getPluginManager().registerEvents(statusManager, this);
+        getServer().getPluginManager().registerEvents(new me.yisang.limbus.status.SanityListener(sanityManager), this);
 
         getServer().getPluginManager().registerEvents(this, this);
 
@@ -157,6 +175,11 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
 
     private void registerModule(org.bukkit.event.Listener module) {
         getServer().getPluginManager().registerEvents(module, this);
+    }
+
+    @Override
+    public void onDisable() {
+        if (sanityManager != null) sanityManager.shutdown();
     }
 
     // ── 聖宣盾牌 Tick ─────────────────────────────────────────────────────────
@@ -319,14 +342,6 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         if (args.length == 0) return true;
         String first = args[0].toLowerCase();
 
-        if ("reload".equals(first) && !(sender instanceof Player)) {
-            // console 版本
-            if (!sender.hasPermission("limbus.admin") && !(sender instanceof org.bukkit.command.ConsoleCommandSender)) return true;
-            sender.sendMessage("[LimbusEGOWeapons] 完整重新載入中…");
-            reloadPluginFully(sender);
-            return true;
-        }
-
         if ("give".equals(first)) {
             if (!sender.hasPermission("limbus.admin") && !(sender instanceof org.bukkit.command.ConsoleCommandSender)) return true;
             if (args.length < 3) { sender.sendMessage("用法：/getego give <玩家> <武器ID>"); return true; }
@@ -363,15 +378,6 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
             player.openInventory(new WeaponCatalogGUI(this, WeaponCatalogGUI.TAB_ALL).getInventory());
             return true;
         }
-        if ("reload".equals(first)) {
-            if (!player.hasPermission("limbus.admin") && !player.isOp()) {
-                player.sendMessage(translateHexColorCodes("&#FF5555你沒有權限使用此指令。"));
-                return true;
-            }
-            player.sendMessage(translateHexColorCodes("&#FFD700[LimbusEGOWeapons] &#AAAAAA完整重新載入中…"));
-            reloadPluginFully(sender);
-            return true;
-        }
         // 其餘子指令（直接給玩家自己物品）需要管理權限
         if (!player.hasPermission("limbus.admin") && !player.isOp()) return true;
         if ("tiger_mark".equals(first)) {
@@ -396,28 +402,10 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
             List<String> completions = new ArrayList<>(
                     List.of("brush", "black", "white", "butterflies", "shield", "mimicry", "dacapo",
                             "tiantui", "tiger_mark", "savage_tiger_mark", "chatuhu", "twilight",
-                            "apocalypse_bird", "tibia", "admin", "catalog", "reload"));
+                            "apocalypse_bird", "tibia", "w_corp_knife", "bladesinger", "admin", "catalog"));
             return completions.stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
         }
         return Collections.emptyList();
-    }
-
-    /**
-     * 完整重新載入插件：disable → enable。
-     * 排到下一 tick 避免在指令執行中把自己 disable 掉導致的 UB。
-     */
-    private void reloadPluginFully(CommandSender sender) {
-        getServer().getScheduler().runTask(this, () -> {
-            org.bukkit.plugin.PluginManager pm = getServer().getPluginManager();
-            try {
-                pm.disablePlugin(this);
-                pm.enablePlugin(this);
-                sender.sendMessage(translateHexColorCodes("&#FFD700[LimbusEGOWeapons] &#AAAAAA重新載入完成。"));
-            } catch (Throwable t) {
-                sender.sendMessage(translateHexColorCodes("&#FF5555[LimbusEGOWeapons] 重新載入失敗：" + t.getMessage()));
-                getLogger().severe("完整重新載入失敗:" + t);
-            }
-        });
     }
 
     // ── 顏色代碼工具 ─────────────────────────────────────────────────────────

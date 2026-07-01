@@ -61,12 +61,12 @@ public class dacapo implements EGOWeapon, Listener {
                         return;
                     }
 
-                    playNote(attacker, target, special ? 12.0 : 3.0, special);
+                    playNote(attacker, target, special ? 5.0 : 1.5, special);
 
                     target.getNearbyEntities(3.5, 3.5, 3.5).forEach(e -> {
                         if (e instanceof LivingEntity v && !e.equals(attacker) && !e.equals(target)) {
                             if (!(e instanceof Player) && !(e instanceof Tameable t && t.isTamed())) {
-                                playNote(attacker, v, (special ? 12.0 : 3.0) * 0.7, special);
+                                playNote(attacker, v, (special ? 5.0 : 1.5) * 0.7, special);
                             }
                         }
                     });
@@ -87,6 +87,12 @@ public class dacapo implements EGOWeapon, Listener {
     private final java.util.Random noteRng = new java.util.Random();
 
     private void playNote(Player p, LivingEntity v, double d, boolean s) {
+        // 先疊沉淪，再打傷害：讓緊接的 EDBE 事件消耗一 count → 造 potency 真傷
+        // 每音符 1p/1c → 用完即銷、不累積 potency，避免 escalation 讓總傷失控
+        if (plugin.getStatusManager() != null) {
+            plugin.getStatusManager().apply(v,
+                    me.yisang.limbus.status.StatusEffect.SEDUCTION, 1, 1, p);
+        }
         p.setMetadata("lsmp_custom_damage", new FixedMetadataValue(plugin, true));
         try {
             v.damage(d, p);

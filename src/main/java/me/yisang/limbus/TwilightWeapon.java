@@ -284,6 +284,12 @@ public class TwilightWeapon implements EGOWeapon, Listener {
                 double trueDmg = baseDmg * TRUE_FRACTION;
                 if (target.isValid() && !target.isDead()) dealTrueDamage(target, trueDmg, player);
                 target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 80, 1));
+
+                // Limbus 破裂：受擊時消耗 → potency × 2 真傷
+                if (plugin.getStatusManager() != null && target.isValid() && !target.isDead()) {
+                    plugin.getStatusManager().apply(target,
+                            me.yisang.limbus.status.StatusEffect.RUPTURE, 5, 2, player);
+                }
             }
         } finally {
             player.removeMetadata("lsmp_custom_damage", plugin);
