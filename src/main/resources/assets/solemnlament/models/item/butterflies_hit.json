@@ -1,7 +1,7 @@
 {
   "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "solemnlament:entity/projectiles/arrow"
+    "layer0": "solemnlament:item/butterflies"
   },
   "display": {
     "ground": {

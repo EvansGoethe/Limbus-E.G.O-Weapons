@@ -1,6 +1,6 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ringbrush:item/ring_brush"
+    "model": "tiantui_star:item/lei"
   }
 }
