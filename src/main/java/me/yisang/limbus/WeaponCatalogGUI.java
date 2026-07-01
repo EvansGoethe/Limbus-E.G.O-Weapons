@@ -85,6 +85,7 @@ public class WeaponCatalogGUI implements InventoryHolder {
         list.add(t.createChatuhuPack(1));
         list.add(w.createItem());
         list.add(w.createApocalypseBirdPack(1));
+        list.add(plugin.getTibia().createItem());
         return list;
     }
 

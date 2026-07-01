@@ -35,6 +35,7 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     private solemnlament solemn;
     private TiantuiStar tiantui;
     private TwilightWeapon twilight;
+    private TibiaWeapon tibia;
     private SoundSuppressor soundSuppressor;
 
     private static final String PACK_URL  = "https://github.com/EvansGoethe/Limbus-E.G.O-weapon-plugin-ResourcePack/releases/download/v.2.15/Limbus_E.G.O_Weapons_plugin_ResourcePack.v.2.15.zip";
@@ -88,6 +89,7 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
     public solemnlament getSolemn() { return solemn; }
     public TiantuiStar getTiantui() { return tiantui; }
     public TwilightWeapon getTwilight() { return twilight; }
+    public TibiaWeapon getTibia() { return tibia; }
     public EGOWeapon getWeaponModule(String id) { return weaponModules.get(id); }
 
     public boolean hasItemId(ItemStack item, String id) {
@@ -110,18 +112,21 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
         ringbrush  r  = new ringbrush(this);
         this.tiantui = new TiantuiStar(this);
         this.twilight = new TwilightWeapon(this);
+        this.tibia = new TibiaWeapon(this);
 
         weaponModules.put("mimicry", m);
         weaponModules.put("dacapo",  d);
         weaponModules.put("brush",   r);
         weaponModules.put("tiantui", tiantui);
         weaponModules.put("twilight", twilight);
+        weaponModules.put("tibia", tibia);
 
         registerModule(m);
         registerModule(d);
         registerModule(r);
         registerModule(tiantui);
         registerModule(twilight);
+        registerModule(tibia);
 
         startShieldTick();
 
@@ -391,7 +396,7 @@ public class LimbusEGOWeapons extends JavaPlugin implements Listener, TabComplet
             List<String> completions = new ArrayList<>(
                     List.of("brush", "black", "white", "butterflies", "shield", "mimicry", "dacapo",
                             "tiantui", "tiger_mark", "savage_tiger_mark", "chatuhu", "twilight",
-                            "apocalypse_bird", "admin", "catalog", "reload"));
+                            "apocalypse_bird", "tibia", "admin", "catalog", "reload"));
             return completions.stream().filter(s -> s.startsWith(args[0].toLowerCase())).toList();
         }
         return Collections.emptyList();

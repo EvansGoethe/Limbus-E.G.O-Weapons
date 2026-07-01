@@ -18,7 +18,7 @@ public class WeaponAdminGUI implements InventoryHolder {
     // Row 1: [filler, brush, mimicry, dacapo, filler, black, white, butterflies, shield]
     // Row 2: [filler, tiantui_star, tiger_mark, savage_tiger_mark, filler...]
     // Row 3: all filler
-    static final int[] ITEM_SLOTS = {10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24};
+    static final int[] ITEM_SLOTS = {10, 11, 12, 14, 15, 16, 17, 19, 20, 21, 22, 23, 24, 25};
 
     public WeaponAdminGUI(LimbusEGOWeapons plugin) {
         inventory = Bukkit.createInventory(this, 36, "§6✦ 武器管理");
@@ -48,6 +48,7 @@ public class WeaponAdminGUI implements InventoryHolder {
         inventory.setItem(22, tiantui.createChatuhuPack(1));
         inventory.setItem(23, plugin.getTwilight().createItem());
         inventory.setItem(24, plugin.getTwilight().createApocalypseBirdPack(1));
+        inventory.setItem(25, plugin.getTibia().createItem());
     }
 
     @Override
