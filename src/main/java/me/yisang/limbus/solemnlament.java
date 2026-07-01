@@ -111,14 +111,14 @@ public class solemnlament {
                         target.addPotionEffect(new PotionEffect(PotionEffectType.WITHER, 80, 1));
                         if (plugin.getStatusManager() != null) {
                             plugin.getStatusManager().apply(target,
-                                    me.yisang.limbus.status.StatusEffect.SEDUCTION, 4, 3, player);
+                                    me.yisang.limbus.status.StatusEffect.SINKING, 4, 3, player);
                         }
                     } else {
                         target.damage(4.0, player);
                         target.addPotionEffect(new PotionEffect(PotionEffectType.BLINDNESS, 60, 0));
                         if (plugin.getStatusManager() != null) {
                             plugin.getStatusManager().apply(target,
-                                    me.yisang.limbus.status.StatusEffect.SEDUCTION, 3, 2, player);
+                                    me.yisang.limbus.status.StatusEffect.SINKING, 3, 2, player);
                         }
                     }
 

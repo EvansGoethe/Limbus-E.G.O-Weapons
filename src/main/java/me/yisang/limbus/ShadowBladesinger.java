@@ -35,13 +35,13 @@ import java.util.UUID;
 
 /**
  * 著影揮刀 — Meursault 的居合刀。
- * 每次命中對自己累積 BREATHING（呼吸法）；隨層數提高爆擊機率。
+ * 每次命中對自己累積 POISE（呼吸法）；隨層數提高爆擊機率。
  * 慢速大劍手感：低攻速、高基礎傷、靠呼吸法賭爆擊。
  */
 public class ShadowBladesinger implements EGOWeapon, Listener {
-    private static final int BREATHING_POTENCY_CAP = 10; // 50% 爆擊率上限（5% × 10）
-    private static final int BREATHING_PER_HIT = 1;
-    private static final int BREATHING_COUNT_PER_HIT = 4;
+    private static final int POISE_POTENCY_CAP = 10; // 50% 爆擊率上限（5% × 10）
+    private static final int POISE_PER_HIT = 1;
+    private static final int POISE_COUNT_PER_HIT = 4;
 
     // 肉斬骨斷
     private static final double LOW_HP_THRESHOLD = 6.0;        // 3 顆心
@@ -89,11 +89,11 @@ public class ShadowBladesinger implements EGOWeapon, Listener {
         StatusManager sm = plugin.getStatusManager();
         if (sm == null) return;
         StatusState s = sm.get(attacker);
-        int cur = s == null ? 0 : s.potency(StatusEffect.BREATHING);
-        if (cur < BREATHING_POTENCY_CAP) {
-            sm.apply(attacker, StatusEffect.BREATHING, BREATHING_PER_HIT, BREATHING_COUNT_PER_HIT, attacker);
+        int cur = s == null ? 0 : s.potency(StatusEffect.POISE);
+        if (cur < POISE_POTENCY_CAP) {
+            sm.apply(attacker, StatusEffect.POISE, POISE_PER_HIT, POISE_COUNT_PER_HIT, attacker);
         } else {
-            sm.refresh(attacker, StatusEffect.BREATHING, BREATHING_COUNT_PER_HIT);
+            sm.refresh(attacker, StatusEffect.POISE, POISE_COUNT_PER_HIT);
         }
     }
 
@@ -158,7 +158,7 @@ public class ShadowBladesinger implements EGOWeapon, Listener {
                 player.getWorld().spawnParticle(Particle.CRIT, target.getLocation().add(0, 1, 0),
                         6, 0.3, 0.3, 0.3, 0.1);
 
-                // 攻擊：標記為自訂傷害以便跑正常結算（BREATHING 爆擊可觸發）
+                // 攻擊：標記為自訂傷害以便跑正常結算（POISE 爆擊可觸發）
                 player.setMetadata("lsmp_custom_damage", new FixedMetadataValue(plugin, true));
                 try {
                     target.damage(SLASH_DAMAGE, player);

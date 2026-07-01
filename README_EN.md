@@ -23,7 +23,7 @@ Each entity tracks a `(potency, count)` two-axis state, where potency is intensi
 | Bleed §c | When the bleeder **attacks**, consumes 1 count → deals potency × 0.5 true damage to itself |
 | Burn §6 | Every 40-tick cycle consumes 1 count → potency true damage (DoT, 4-bucket rotation) |
 | Fragile §d | Incoming damage × (1 + potency × 15%) multiplier |
-| Seduction §5 | On being hit, consumes 1 count → potency true damage + player SAN −1 (turns into Depression ×1.5 at rock bottom); higher potency slows victim (−2%/potency, cap −50%) |
+| Sinking §5 | On being hit, consumes 1 count → potency true damage + player SAN −1 (turns into Depression ×1.5 at rock bottom); higher potency slows victim (−2%/potency, cap −50%) |
 | Rupture §4 | On being hit, consumes 1 count → potency × 2 true damage (boss-melter multiplier) |
 | Tremor §b | Accumulates potency; on being hit while potency ≥ 5 → **Burst**: consumes all potency, deals potency × 3 true damage + derives Scorching (adds Burn 5p/3c) |
 
@@ -35,7 +35,7 @@ Each entity tracks a `(potency, count)` two-axis state, where potency is intensi
 | Protection §a | Incoming damage × (1 − potency × 5%), applied before Fragile | Passive — checked each incoming hit |
 | Haste §f | Speed potion wrapper: amplifier = potency−1, duration = count seconds | Decays via vanilla potion timer |
 | Bind §8 | Slowness potion wrapper, same as above | Same as above |
-| Breathing §3 | min(60%, potency × 5%) chance to **crit ×1.75** per swing | −1 count per swing |
+| Poise §3 | min(60%, potency × 5%) chance to **crit ×1.75** per swing | −1 count per swing |
 | Charge §9 | Outgoing damage × (1 + potency × 3%) | −1 count per swing |
 
 ---
@@ -45,7 +45,7 @@ Each entity tracks a `(potency, count)` two-axis state, where potency is intensi
 Each player has a persistent BossBar: `progress = (SAN + 45) / 90` (SAN=0 = half full).
 
 - **Range**: −45 to +45, default 0
-- **Every 2 hits landed**: +1; **every 2 hits taken**: −1; **Seduction consume**: −1 per count
+- **Every 2 hits landed**: +1; **every 2 hits taken**: −1; **Sinking consume**: −1 per count
 - **Out-of-combat recovery**: after 10 s out of combat, negative SAN regenerates +1 per 2 s until 0; positive does not decay
 - **Food restores SAN**: every food-level point gained → SAN +1
 - **Attribute tuning**: SAN modulates ATTACK_DAMAGE / MOVEMENT_SPEED via modifiers
@@ -54,7 +54,7 @@ Each player has a persistent BossBar: `progress = (SAN + 45) / 90` (SAN=0 = half
 - **Warning thresholds**
   - SAN < −20: chat + wither ambient sound each time it crosses a −10 boundary downward (silent on rise)
   - SAN ≤ −30: **Panic** — reapplies Blindness I + Weakness I every 60 ticks
-  - SAN = −45: **Rock Bottom** — adds Slowness IV, Seduction damage becomes Depression ×1.5
+  - SAN = −45: **Rock Bottom** — adds Slowness IV, Sinking damage becomes Depression ×1.5
 
 ---
 
@@ -63,7 +63,7 @@ Each player has a persistent BossBar: `progress = (SAN + 45) / 90` (SAN=0 = half
 ### Ring Brush
 > Base: **Netherite Sword** | CMD: 1001 | +8 dmg / −2.4 spd
 
-Right-click a target: 3.5 damage + random negative potion effect + Limbus random pool (Bleed/Burn/Fragile/Seduction/Rupture/Tremor/Bind — buff triad excluded) 1p/3c. A second right-click on the same target within 1.5 s triggers double effect.
+Right-click a target: 3.5 damage + random negative potion effect + Limbus random pool (Bleed/Burn/Fragile/Sinking/Rupture/Tremor/Bind — buff triad excluded) 1p/3c. A second right-click on the same target within 1.5 s triggers double effect.
 
 ### Mimicry
 > Base: **Diamond Sword** | CMD: 1006 | +12 dmg / −3.2 spd
@@ -80,14 +80,14 @@ Replaces normal attack with a note combo (splashes to entities within 3.5 blocks
 | Normal | 60% | 5 | 1.5 | 2 tick |
 | Special | 40% | 3 | 5 | 4 tick |
 
-Each note-hit applies 1p/1c Seduction; the immediately following damage consumes 1 count → extra true damage.
+Each note-hit applies 1p/1c Sinking; the immediately following damage consumes 1 count → extra true damage.
 
 ### Solemn Lament (Black / White)
 > Base: **Crossbow** | CMD: 1002 / 1003 | Hidden "Quick Charge V"
 
 Two-stage: right-click to load → right-click to fire butterfly projectile. Cooldown 400 ms.
-- Black: 8 damage + Wither II (4 s) + Seduction 4p/3c on hit
-- White: 4 damage + Blindness (3 s) + Seduction 3p/2c on hit
+- Black: 8 damage + Wither II (4 s) + Sinking 4p/3c on hit
+- White: 4 damage + Blindness (3 s) + Sinking 3p/2c on hit
 
 > ⚠ If both regular arrows and butterflies are in inventory, vanilla may pick regular arrows first. Put butterflies in offhand or hotbar slot 1.
 
@@ -150,7 +150,7 @@ Dagger of a W Corp Tier-3 Cleaner. "In the end, this is the passage."
 
 Meursault's iaijutsu blade. "Behead beneath the moon — and thus, expire."
 
-- Each hit: applies Breathing 1p/4c (potency cap 10 → 50% crit chance)
+- Each hit: applies Poise 1p/4c (potency cap 10 → 50% crit chance)
 - **Flesh-Slash Bone-Snap** (v3.0.1): HP < 3 hearts + sneak + right-click entity → **rooted 5-hit combo**
   - One slash every 4 ticks × 5 (20 ticks / 1 second total)
   - Each slash: 7 base damage + SWEEP_ATTACK line particle + CRIT hit particle

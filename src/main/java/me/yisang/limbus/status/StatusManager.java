@@ -37,7 +37,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   BURN      — 每 40 tick 週期消耗 1 count → 對自己造 potency 真傷
  *   FRAGILE   — 承傷乘 (1 + potency × 15%) 乘區
  *   POWER     — 出手乘 (1 + potency × 10%) 乘區
- *   SEDUCTION — 受擊消耗 1 count → potency 真傷 + 玩家 SAN -1（SAN 觸底轉憂鬱 ×1.5）
+ *   SINKING — 受擊消耗 1 count → potency 真傷 + 玩家 SAN -1（SAN 觸底轉憂鬱 ×1.5）
  *   RUPTURE   — 受擊消耗 1 count → potency × 2 真傷（速殺 boss 用高倍率）
  *   TREMOR    — 累積 potency；受擊且 potency ≥ 閾值時「爆發」→ 消耗全部 potency
  *               造 potency × 3 真傷 + 派生灼熱（追加 BURN 5p/3c）
@@ -45,7 +45,7 @@ import java.util.concurrent.ConcurrentHashMap;
  *   HASTE/BIND— potion wrapper：直接轉 Speed / Slowness，不進 states map
  *               amplifier = potency-1，duration = count 秒
  *   CHARGE    — 出手乘 (1 + potency × 3%)，每次出手 -1 count
- *   BREATHING — 出手 min(60%, potency × 5%) 機率爆擊，×1.75 傷害，每次出手 -1 count
+ *   POISE — 出手 min(60%, potency × 5%) 機率爆擊，×1.75 傷害，每次出手 -1 count
  *   POWER 也改為每次出手 -1 count（原本永久留存不合理，同 Limbus 語意調整）
  *
  * DoT 分 4 桶輪流結算，每 10 tick 處理 1/4，攤平負載。
@@ -64,13 +64,13 @@ public class StatusManager implements Listener {
     private static final int TREMOR_DERIV_BURN_POTENCY = 5;
     private static final int TREMOR_DERIV_BURN_COUNT = 3;
     private static final double PROTECTION_PER_POTENCY = 0.05;
-    private static final double SEDUCTION_SPEED_PER_POTENCY = 0.02;
-    private static final double SEDUCTION_SPEED_MAX = 0.5;
-    private static final String SEDUCTION_SPEED_MOD_KEY = "seduction_speed";
+    private static final double SINKING_SPEED_PER_POTENCY = 0.02;
+    private static final double SINKING_SPEED_MAX = 0.5;
+    private static final String SINKING_SPEED_MOD_KEY = "sinking_speed";
     private static final double CHARGE_PER_POTENCY = 0.03;              // +3% 攻擊 / potency
-    private static final double BREATHING_CRIT_PER_POTENCY = 0.05;      // +5% 爆擊率 / potency
-    private static final double BREATHING_CRIT_MAX = 0.60;              // 上限 60% 爆擊率
-    private static final double BREATHING_CRIT_MULT = 1.75;             // 爆擊 ×1.75
+    private static final double POISE_CRIT_PER_POTENCY = 0.05;      // +5% 爆擊率 / potency
+    private static final double POISE_CRIT_MAX = 0.60;              // 上限 60% 爆擊率
+    private static final double POISE_CRIT_MULT = 1.75;             // 爆擊 ×1.75
 
     private final LimbusEGOWeapons plugin;
     private final SanityManager sanity;
@@ -104,7 +104,7 @@ public class StatusManager implements Listener {
 
         StatusState s = states.computeIfAbsent(target.getUniqueId(), k -> new StatusState());
         s.add(effect, potency, count);
-        if (effect == StatusEffect.SEDUCTION) syncSeductionSpeed(target, s);
+        if (effect == StatusEffect.SINKING) syncSinkingSpeed(target, s);
         showEffectApplied(target, effect, potency, count, source);
     }
 
@@ -191,30 +191,30 @@ public class StatusManager implements Listener {
         StatusState atkS = attacker == null ? null : states.get(attacker.getUniqueId());
         StatusState vicS = victim == null ? null : states.get(victim.getUniqueId());
 
-        // POWER / CHARGE：攻擊者輸出乘區；BREATHING：機率爆擊。每次出手 -1 count。
+        // POWER / CHARGE：攻擊者輸出乘區；POISE：機率爆擊。每次出手 -1 count。
         if (attacker != null && atkS != null) {
             int power = atkS.potency(StatusEffect.POWER);
             int charge = atkS.potency(StatusEffect.CHARGE);
-            int breathing = atkS.potency(StatusEffect.BREATHING);
+            int poise = atkS.potency(StatusEffect.POISE);
             double mult = 1.0;
             if (power > 0) mult *= (1.0 + power * POWER_PER_POTENCY);
             if (charge > 0) mult *= (1.0 + charge * CHARGE_PER_POTENCY);
             boolean crit = false;
-            if (breathing > 0) {
-                double chance = Math.min(BREATHING_CRIT_MAX, breathing * BREATHING_CRIT_PER_POTENCY);
+            if (poise > 0) {
+                double chance = Math.min(POISE_CRIT_MAX, poise * POISE_CRIT_PER_POTENCY);
                 if (Math.random() < chance) {
                     crit = true;
-                    mult *= BREATHING_CRIT_MULT;
+                    mult *= POISE_CRIT_MULT;
                 }
             }
             if (mult != 1.0) event.setDamage(event.getDamage() * mult);
             if (crit && attacker instanceof Player pa) {
-                sendActionBar(pa, "§3§l✦ 呼吸法爆擊 §7» §f×" + BREATHING_CRIT_MULT);
+                sendActionBar(pa, "§3§l✦ 呼吸法爆擊 §7» §f×" + POISE_CRIT_MULT);
             }
             // 每次出手消耗 1 count（Limbus buff 語意：每回合／每次拼點自然衰減）
             if (power > 0) atkS.consume(StatusEffect.POWER, 1);
             if (charge > 0) atkS.consume(StatusEffect.CHARGE, 1);
-            if (breathing > 0) atkS.consume(StatusEffect.BREATHING, 1);
+            if (poise > 0) atkS.consume(StatusEffect.POISE, 1);
         }
 
         // PROTECTION：受害者減傷乘區（先於 FRAGILE，讓易損不會被完全抵消）
@@ -242,18 +242,18 @@ public class StatusManager implements Listener {
             }
         }
 
-        // SEDUCTION：受擊消耗
+        // SINKING：受擊消耗
         if (victim != null && vicS != null) {
-            int sedPotency = vicS.potency(StatusEffect.SEDUCTION);
-            if (sedPotency > 0 && vicS.consume(StatusEffect.SEDUCTION, 1) > 0) {
+            int sedPotency = vicS.potency(StatusEffect.SINKING);
+            if (sedPotency > 0 && vicS.consume(StatusEffect.SINKING, 1) > 0) {
                 boolean depressed = sanity.isDepressed(victim);
                 double dmg = sedPotency * (depressed ? DEPRESSION_MULT : 1.0);
                 scheduleTrueDamage(victim,
                         attacker instanceof Player ? (Player) attacker : null,
                         dmg,
-                        depressed ? null : StatusEffect.SEDUCTION);
+                        depressed ? null : StatusEffect.SINKING);
                 if (victim instanceof Player pv) sanity.dropSan(pv, 1);
-                syncSeductionSpeed(victim, vicS);
+                syncSinkingSpeed(victim, vicS);
             }
         }
 
@@ -295,8 +295,8 @@ public class StatusManager implements Listener {
     @EventHandler
     public void onDeath(EntityDeathEvent event) {
         LivingEntity le = event.getEntity();
-        // 清 SEDUCTION 移速 modifier（玩家 attribute 會跨復活保留，要顯式移除）
-        syncSeductionSpeed(le, null);
+        // 清 SINKING 移速 modifier（玩家 attribute 會跨復活保留，要顯式移除）
+        syncSinkingSpeed(le, null);
         states.remove(le.getUniqueId());
     }
     // 非死亡的 despawn / chunk unload 由 burnTick 掃描時 isValid 檢查順帶清掉。
@@ -328,20 +328,20 @@ public class StatusManager implements Listener {
     }
 
     /**
-     * 沉淪移速：讀當前 SEDUCTION potency，套 MULTIPLY_SCALAR_1 modifier
+     * 沉淪移速：讀當前 SINKING potency，套 MULTIPLY_SCALAR_1 modifier
      * 到 MOVEMENT_SPEED。-2% / potency，上限 -50%。potency 歸零時清 modifier。
      */
-    private void syncSeductionSpeed(LivingEntity target, StatusState s) {
+    private void syncSinkingSpeed(LivingEntity target, StatusState s) {
         AttributeInstance inst = target.getAttribute(Attribute.MOVEMENT_SPEED);
         if (inst == null) return;
-        NamespacedKey key = new NamespacedKey(plugin, SEDUCTION_SPEED_MOD_KEY);
+        NamespacedKey key = new NamespacedKey(plugin, SINKING_SPEED_MOD_KEY);
         inst.getModifiers().stream()
                 .filter(m -> key.equals(m.getKey()))
                 .findFirst()
                 .ifPresent(inst::removeModifier);
-        int p = s == null ? 0 : s.potency(StatusEffect.SEDUCTION);
+        int p = s == null ? 0 : s.potency(StatusEffect.SINKING);
         if (p <= 0) return;
-        double amount = -Math.min(SEDUCTION_SPEED_MAX, p * SEDUCTION_SPEED_PER_POTENCY);
+        double amount = -Math.min(SINKING_SPEED_MAX, p * SINKING_SPEED_PER_POTENCY);
         inst.addModifier(new AttributeModifier(
                 key, amount, AttributeModifier.Operation.MULTIPLY_SCALAR_1, EquipmentSlotGroup.ANY));
     }

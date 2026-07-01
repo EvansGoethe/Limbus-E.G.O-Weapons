@@ -28,7 +28,7 @@ public class ringbrush implements EGOWeapon, Listener {
             me.yisang.limbus.status.StatusEffect.BLEED,
             me.yisang.limbus.status.StatusEffect.BURN,
             me.yisang.limbus.status.StatusEffect.FRAGILE,
-            me.yisang.limbus.status.StatusEffect.SEDUCTION,
+            me.yisang.limbus.status.StatusEffect.SINKING,
             me.yisang.limbus.status.StatusEffect.RUPTURE,
             me.yisang.limbus.status.StatusEffect.TREMOR,
             me.yisang.limbus.status.StatusEffect.BIND,

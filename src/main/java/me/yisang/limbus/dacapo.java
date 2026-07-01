@@ -91,7 +91,7 @@ public class dacapo implements EGOWeapon, Listener {
         // 每音符 1p/1c → 用完即銷、不累積 potency，避免 escalation 讓總傷失控
         if (plugin.getStatusManager() != null) {
             plugin.getStatusManager().apply(v,
-                    me.yisang.limbus.status.StatusEffect.SEDUCTION, 1, 1, p);
+                    me.yisang.limbus.status.StatusEffect.SINKING, 1, 1, p);
         }
         p.setMetadata("lsmp_custom_damage", new FixedMetadataValue(plugin, true));
         try {
