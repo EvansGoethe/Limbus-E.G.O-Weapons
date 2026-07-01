@@ -1,5 +1,7 @@
 # Limbus E.G.O Weapons — Paper Plugin
 
+*[English version](README_EN.md)*
+
 將邊獄公司（Limbus Company）的 E.G.O 武器與**攻擊屬性 / 理智值系統**帶進 Minecraft 的 Paper 插件。
 
 - **版本**：3.0.1
